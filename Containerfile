@@ -15,13 +15,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-name: pr-check
+# ghcr.io/openkaiden/openshell-image-base-builder:next
+FROM ghcr.io/openkaiden/openshell-image-base-builder@sha256:27c5cb3411afcd4950ec89308425d54685a7c07b8de094260e8e92c0c9c9e43e AS builder
+ARG OPENCODE_VERSION=2.0.22
 
-permissions:
-  contents: read
+# Install opencode and then copy it inside the root filesystem
+RUN set -eux; \
+    curl -fsSL https://opencode.ai/v2/install | bash -s -- --version "${OPENCODE_VERSION}" --no-modify-path; \
+    install -D -m 0755 /root/.opencode/bin/opencode /mnt/rootfs/usr/local/bin/opencode
 
-on: [pull_request]
-
-jobs:
-  build:
-    uses: openkaiden/gh-actions/.github/workflows/oci-image.yaml@da905b7ca937b8cfe1b2efc9e0310c6635d25732 # main
+# Now create our final image with reduced layers
+FROM scratch
+COPY --from=builder /mnt/rootfs/ /
+CMD ["opencode"]
